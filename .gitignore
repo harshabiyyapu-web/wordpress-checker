@@ -3,3 +3,8 @@ node_modules/
 .env
 .env.*
 npm-debug.log*
+NHsolutions/
+n8n/
+*.php
+README.md
+
