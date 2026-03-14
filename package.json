@@ -1,0 +1,13 @@
+{
+  "name": "local-wifi-chat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Simple local network chat over WebSockets",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

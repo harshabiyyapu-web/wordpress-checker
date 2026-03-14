@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local WordPress URL Checker</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --paper: rgba(255, 251, 245, 0.88);
+      --paper-strong: rgba(255, 249, 241, 0.96);
+      --ink: #1f1f1a;
+      --muted: #6f665d;
+      --line: rgba(58, 46, 34, 0.12);
+      --accent: #bc5a45;
+      --accent-dark: #8e3d2d;
+      --good: #1d7a52;
+      --bad: #9f2f2f;
+      --neutral: #7f6a29;
+      --shadow: 0 24px 60px rgba(67, 47, 31, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 205, 171, 0.65), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(211, 227, 201, 0.8), transparent 26%),
+        linear-gradient(180deg, #f8f3eb 0%, var(--bg) 100%);
+    }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 56px;
+    }
+
+    .hero,
+    .panel,
+    .results {
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 28px;
+      background: var(--paper);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 28px;
+      margin-bottom: 20px;
+      background:
+        linear-gradient(135deg, rgba(255, 241, 232, 0.98), rgba(255, 250, 244, 0.9)),
+        var(--paper-strong);
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent-dark);
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p:last-child {
+      max-width: 760px;
+      margin: 14px 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .panel {
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 260px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      resize: vertical;
+      font: inherit;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    textarea:focus {
+      outline: 2px solid rgba(188, 90, 69, 0.2);
+      border-color: rgba(188, 90, 69, 0.3);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 22px;
+      font: inherit;
+      font-weight: 700;
+      color: #fffaf5;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      cursor: pointer;
+      transition: transform 160ms ease, opacity 160ms ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.72;
+    }
+
+    .hint,
+    .loading,
+    .message {
+      color: var(--muted);
+    }
+
+    .loading {
+      font-weight: 700;
+      color: var(--accent-dark);
+    }
+
+    .message {
+      min-height: 1.4em;
+      margin-top: 12px;
+    }
+
+    .results {
+      padding: 24px;
+    }
+
+    .results[hidden] {
+      display: none;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .summary-card strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 1.8rem;
+      font-family: Georgia, "Times New Roman", serif;
+      letter-spacing: -0.04em;
+    }
+
+    .results-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .filter-button {
+      padding: 10px 16px;
+      color: var(--accent-dark);
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(188, 90, 69, 0.18);
+    }
+
+    .filter-button.active {
+      color: #fffaf5;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      border-color: transparent;
+    }
+
+    .results-note {
+      color: var(--muted);
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .result-card {
+      overflow: hidden;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    }
+
+    .result-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(188, 90, 69, 0.22);
+      box-shadow: 0 16px 30px rgba(67, 47, 31, 0.12);
+    }
+
+    .card-media,
+    .card-placeholder {
+      width: 100%;
+      height: 152px;
+      display: block;
+    }
+
+    .card-media {
+      object-fit: cover;
+      background: #efe7dc;
+    }
+
+    .card-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      text-align: center;
+      font-weight: 700;
+      color: var(--muted);
+      background:
+        linear-gradient(135deg, rgba(229, 220, 209, 0.95), rgba(245, 238, 230, 0.92));
+    }
+
+    .card-body {
+      padding: 14px 14px 16px;
+    }
+
+    .card-url {
+      margin: 0;
+      word-break: break-word;
+      line-height: 1.45;
+      font-size: 0.94rem;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .card-open {
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .status-wordpress {
+      color: var(--good);
+      background: rgba(29, 122, 82, 0.12);
+    }
+
+    .status-not_wordpress {
+      color: var(--neutral);
+      background: rgba(127, 106, 41, 0.13);
+    }
+
+    .status-error {
+      color: var(--bad);
+      background: rgba(159, 47, 47, 0.12);
+    }
+
+    .status-detail {
+      margin-top: 10px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.88rem;
+    }
+
+    @media (max-width: 860px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        width: min(100% - 20px, 1120px);
+        padding: 20px 0 36px;
+      }
+
+      .hero,
+      .panel,
+      .results {
+        border-radius: 22px;
+      }
+
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      textarea {
+        min-height: 220px;
+      }
+
+      .results-toolbar {
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <p class="eyebrow">Local URL Scanner</p>
+      <h1>Check a list of sites for WordPress signatures.</h1>
+      <p>
+        Paste one URL per line, run the scan, and review the summary and per-site status
+        without using any external API. If a URL is missing a scheme, the backend will try
+        it as <code>https://...</code>.
+      </p>
+    </section>
+
+    <section class="panel">
+      <label for="urls">URLs to check</label>
+      <textarea id="urls" spellcheck="false" placeholder="https://example.com
+https://wordpress.org
+example.org"></textarea>
+
+      <div class="actions">
+        <button id="runButton" type="button">Run Check</button>
+        <span id="loading" class="loading" hidden>Checking...</span>
+        <span class="hint">Handles large lists using concurrent requests on the backend.</span>
+      </div>
+
+      <div id="message" class="message" aria-live="polite"></div>
+    </section>
+
+    <section id="resultsSection" class="results" hidden>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div>Total URLs</div>
+          <strong id="totalCount">0</strong>
+        </div>
+        <div class="summary-card">
+          <div>WordPress</div>
+          <strong id="wordpressCount">0</strong>
+        </div>
+        <div class="summary-card">
+          <div>Not WordPress</div>
+          <strong id="notWordpressCount">0</strong>
+        </div>
+        <div class="summary-card">
+          <div>Errors</div>
+          <strong id="errorCount">0</strong>
+        </div>
+      </div>
+
+      <div class="results-toolbar">
+        <div class="filter-group">
+          <button class="filter-button active" type="button" data-filter="all">All</button>
+          <button class="filter-button" type="button" data-filter="wordpress">WordPress</button>
+          <button class="filter-button" type="button" data-filter="others">Others</button>
+        </div>
+        <div id="resultsNote" class="results-note"></div>
+      </div>
+
+      <div id="cards" class="cards"></div>
+    </section>
+  </main>
+
+  <script>
+    const runButton = document.getElementById("runButton");
+    const urlsField = document.getElementById("urls");
+    const loading = document.getElementById("loading");
+    const message = document.getElementById("message");
+    const resultsSection = document.getElementById("resultsSection");
+    const cards = document.getElementById("cards");
+    const resultsNote = document.getElementById("resultsNote");
+    const filterButtons = Array.from(document.querySelectorAll(".filter-button"));
+
+    const totalCount = document.getElementById("totalCount");
+    const wordpressCount = document.getElementById("wordpressCount");
+    const notWordpressCount = document.getElementById("notWordpressCount");
+    const errorCount = document.getElementById("errorCount");
+    let lastResults = [];
+
+    function parseUrls(input) {
+      return input
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+    }
+
+    function humanizeStatus(status) {
+      if (status === "wordpress") return "WordPress";
+      if (status === "not_wordpress") return "Not WordPress";
+      return "Error";
+    }
+
+    function setLoadingState(isLoading) {
+      runButton.disabled = isLoading;
+      loading.hidden = !isLoading;
+    }
+
+    function renderSummary(summary) {
+      totalCount.textContent = summary.total;
+      wordpressCount.textContent = summary.wordpress;
+      notWordpressCount.textContent = summary.not_wordpress;
+      errorCount.textContent = summary.error;
+    }
+
+    function getFilteredResults(filter) {
+      if (filter === "wordpress") {
+        return lastResults.filter((result) => result.status === "wordpress");
+      }
+
+      if (filter === "others") {
+        return lastResults.filter(
+          (result) => result.status === "not_wordpress" || result.status === "error",
+        );
+      }
+
+      return lastResults;
+    }
+
+    function setActiveFilter(filter) {
+      filterButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.filter === filter);
+      });
+    }
+
+    function createPlaceholder() {
+      const placeholder = document.createElement("div");
+      placeholder.className = "card-placeholder";
+      placeholder.textContent = "No preview";
+      return placeholder;
+    }
+
+    function createPreview(result) {
+      if (!result.previewImage) {
+        return createPlaceholder();
+      }
+
+      const image = document.createElement("img");
+      image.className = "card-media";
+      image.src = result.previewImage;
+      image.alt = "Preview";
+      image.loading = "lazy";
+      image.referrerPolicy = "no-referrer";
+      image.addEventListener("error", () => {
+        image.replaceWith(createPlaceholder());
+      }, { once: true });
+      return image;
+    }
+
+    function renderCards(filter) {
+      const filteredResults = getFilteredResults(filter);
+
+      cards.innerHTML = "";
+      resultsNote.textContent =
+        filteredResults.length === lastResults.length
+          ? "Showing all results."
+          : "Showing " + filteredResults.length + " of " + lastResults.length + " results.";
+
+      filteredResults.forEach((result) => {
+        const card = document.createElement("article");
+        const body = document.createElement("div");
+        const urlText = document.createElement("p");
+        const meta = document.createElement("div");
+        const statusBadge = document.createElement("span");
+        const openHint = document.createElement("span");
+
+        card.className = "result-card";
+        card.tabIndex = 0;
+        card.setAttribute("role", "link");
+        card.setAttribute("aria-label", "Open " + result.url);
+        card.appendChild(createPreview(result));
+
+        body.className = "card-body";
+        urlText.className = "card-url";
+        urlText.textContent = result.url;
+
+        meta.className = "card-meta";
+        statusBadge.className = "status-badge status-" + result.status;
+        statusBadge.textContent = humanizeStatus(result.status);
+
+        openHint.className = "card-open";
+        openHint.textContent = "Open site";
+
+        meta.append(statusBadge, openHint);
+        body.append(urlText, meta);
+
+        if (result.httpStatus || result.error) {
+          const detail = document.createElement("div");
+          detail.className = "status-detail";
+
+          const parts = [];
+          if (result.httpStatus) {
+            parts.push("HTTP " + result.httpStatus);
+          }
+          if (result.error) {
+            parts.push(result.error);
+          }
+
+          detail.textContent = parts.join(" • ");
+          body.appendChild(detail);
+        }
+
+        card.appendChild(body);
+
+        function openResult() {
+          window.open(result.url, "_blank");
+        }
+
+        card.addEventListener("click", openResult);
+        card.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openResult();
+          }
+        });
+
+        cards.appendChild(card);
+      });
+
+      resultsSection.hidden = false;
+    }
+
+    async function runCheck() {
+      const urls = parseUrls(urlsField.value);
+
+      if (urls.length === 0) {
+        message.textContent = "Paste at least one URL before running the check.";
+        resultsSection.hidden = true;
+        return;
+      }
+
+      setLoadingState(true);
+      message.textContent = "";
+
+      try {
+        const response = await fetch("/check", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ urls }),
+        });
+
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload.error || "Request failed");
+        }
+
+        lastResults = payload.results;
+        renderSummary(payload.summary);
+        setActiveFilter("all");
+        renderCards("all");
+        message.textContent = "Check completed.";
+      } catch (error) {
+        resultsSection.hidden = true;
+        message.textContent = error.message || "Unable to complete the check.";
+      } finally {
+        setLoadingState(false);
+      }
+    }
+
+    runButton.addEventListener("click", runCheck);
+    filterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const filter = button.dataset.filter || "all";
+        setActiveFilter(filter);
+        renderCards(filter);
+      });
+    });
+  </script>
+</body>
+</html>
