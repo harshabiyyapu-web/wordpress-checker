@@ -2,6 +2,10 @@ services:
   wordpress-checker:
     build: .
     container_name: wordpress-checker
+    expose:
+      - "3000"
+    labels:
+      - "coolify.managed=true"
     environment:
       - HOST=0.0.0.0
       - PORT=3000
