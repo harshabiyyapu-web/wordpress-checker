@@ -2,8 +2,6 @@ services:
   wordpress-checker:
     build: .
     container_name: wordpress-checker
-    ports:
-      - "3000:3000"
     environment:
       - HOST=0.0.0.0
       - PORT=3000
